@@ -1,0 +1,54 @@
+[all]
+arm_64bit=1
+kernel=vmlinuz
+cmdline=cmdline.txt
+initramfs initrd.img followkernel
+
+# GPIO interfaces - SPI, I2C, and UART must be disabled to avoid
+# pin conflicts with the HyperPixel4 DPI display.
+# The hackberrypicm5 overlay handles these on alternate pins.
+dtparam=audio=on
+dtparam=i2c_arm=off
+dtparam=spi=off
+
+disable_overscan=1
+
+#hdmi_drive=2
+
+# Enable KMS graphics
+dtoverlay=vc4-kms-v3d
+disable_fw_kms_setup=1
+
+# UART disabled - conflicts with DPI display on GPIO 14
+enable_uart=0
+
+camera_auto_detect=1
+display_auto_detect=1
+
+# USB controller
+dtoverlay=dwc2
+
+[pi4]
+max_framebuffers=2
+arm_boost=1
+
+[pi3+]
+dtoverlay=vc4-kms-v3d,cma-128
+
+[pi02]
+dtoverlay=vc4-kms-v3d,cma-128
+
+[cm4]
+dtoverlay=dwc2,dr_mode=host
+
+[cm5]
+dtoverlay=dwc2,dr_mode=host
+
+# HackberryPi CM5 display and keyboard setup
+# Order matters: hackberrypicm5 must load before the display overlay
+[all]
+dtoverlay=vc4-kms-v3d
+dtoverlay=hackberrypicm5
+dtparam=pciex1
+dtoverlay=vc4-kms-v3d
+dtoverlay=vc4-kms-dpi-hyperpixel4sq
