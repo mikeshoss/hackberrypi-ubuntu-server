@@ -91,7 +91,7 @@ sudo rpi-eeprom-config --edit
 
 ### 3. Install Required Overlays
 
-The HackberryPi needs two custom overlays that aren't included in standard Ubuntu Server.
+The HackberryPi needs custom overlays that aren't included in standard Ubuntu Server.
 
 **Option A: Copy from Raspberry Pi OS SD card**
 
@@ -99,6 +99,7 @@ The HackberryPi needs two custom overlays that aren't included in standard Ubunt
 sudo mount /dev/nvme0n1p1 /mnt
 sudo cp /boot/firmware/overlays/hackberrypicm5.dtbo /mnt/overlays/
 sudo cp /boot/firmware/overlays/hyperpixel4.dtbo /mnt/overlays/
+sudo cp /boot/firmware/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo /mnt/overlays/
 sudo umount /mnt
 ```
 
@@ -107,10 +108,9 @@ sudo umount /mnt
 SSH into the running Ubuntu Server and run:
 
 ```bash
-sudo wget -O /boot/firmware/overlays/hackberrypicm5.dtbo \
-    https://raw.githubusercontent.com/mikeshoss/hackberrypi-ubuntu-server/main/overlays/hackberrypicm5.dtbo
-sudo wget -O /boot/firmware/overlays/hyperpixel4.dtbo \
-    https://raw.githubusercontent.com/mikeshoss/hackberrypi-ubuntu-server/main/overlays/hyperpixel4.dtbo
+REPO_URL="https://raw.githubusercontent.com/mikeshoss/hackberrypi-ubuntu-server/main/overlays"
+sudo wget -O /boot/firmware/overlays/hackberrypicm5.dtbo "${REPO_URL}/hackberrypicm5.dtbo"
+sudo wget -O /boot/firmware/overlays/hyperpixel4.dtbo "${REPO_URL}/hyperpixel4.dtbo"
 ```
 
 The `vc4-kms-dpi-hyperpixel4sq.dtbo` overlay is typically included in the Ubuntu kernel package already. Verify with:
@@ -119,7 +119,12 @@ The `vc4-kms-dpi-hyperpixel4sq.dtbo` overlay is typically included in the Ubuntu
 ls /boot/firmware/overlays/ | grep hyperpixel4sq
 ```
 
-If missing, download it from the [ZitaoTech HackberryPiCM5 repo](https://github.com/ZitaoTech/HackberryPiCM5/tree/main/Operating%20System).
+If missing, download it from this repo:
+
+```bash
+sudo wget -O /boot/firmware/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo \
+    https://raw.githubusercontent.com/mikeshoss/hackberrypi-ubuntu-server/main/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo
+```
 
 ### 4. Configure config.txt
 
