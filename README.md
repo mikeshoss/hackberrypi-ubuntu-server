@@ -91,7 +91,7 @@ sudo rpi-eeprom-config --edit
 
 ### 3. Install Required Overlays
 
-The HackberryPi needs two custom overlays that aren't included in standard Ubuntu Server.
+The HackberryPi needs custom overlays that aren't included in standard Ubuntu Server.
 
 **Option A: Copy from Raspberry Pi OS SD card**
 
@@ -99,6 +99,7 @@ The HackberryPi needs two custom overlays that aren't included in standard Ubunt
 sudo mount /dev/nvme0n1p1 /mnt
 sudo cp /boot/firmware/overlays/hackberrypicm5.dtbo /mnt/overlays/
 sudo cp /boot/firmware/overlays/hyperpixel4.dtbo /mnt/overlays/
+sudo cp /boot/firmware/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo /mnt/overlays/
 sudo umount /mnt
 ```
 
@@ -122,7 +123,7 @@ If missing, download it from this repo:
 
 ```bash
 sudo wget -O /boot/firmware/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo \
-    "${REPO_URL}/vc4-kms-dpi-hyperpixel4sq.dtbo"
+    https://raw.githubusercontent.com/mikeshoss/hackberrypi-ubuntu-server/main/overlays/vc4-kms-dpi-hyperpixel4sq.dtbo
 ```
 
 ### 4. Configure config.txt
