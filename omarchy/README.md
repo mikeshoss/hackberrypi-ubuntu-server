@@ -32,8 +32,88 @@ Options: `--scale=N` (default 1.25), `--autologin`, `--no-network-switch`, `--wi
 `--dev-upgrade`, `--jobs=N`, `--yes`. `./install-omarchy.sh --help` for details.
 
 After the `deck` phase and a reboot, log in on the deck's own keyboard: Omarchy starts on tty1.
-<kbd>Super</kbd>+<kbd>Space</kbd> opens the launcher, <kbd>Super</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> the
-Omarchy menu, <kbd>Super</kbd>+<kbd>K</kbd> lists every binding.
+<kbd>Super</kbd>+<kbd>Space</kbd> opens the Omarchy menu, <kbd>Super</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> the apps
+menu, <kbd>Super</kbd>+<kbd>Return</kbd> a terminal, and <kbd>Super</kbd>+<kbd>K</kbd> lists every binding.
+
+## Changing keys and layouts
+
+A key can be changed at four levels. Use the shallowest one that does the job.
+
+| To change | Where | Reaches |
+|---|---|---|
+| What a physical key sends: move the digits, add F-keys, a second Super | Keyboard firmware, with **Vial** | Everything — console, Hyprland, any computer the keyboard is plugged into |
+| Which language the keys type (`us`, `ca`, `us,fr`…) | **XKB layout**: `~/.config/hypr/input.lua`, and `/etc/default/keyboard` for the console | This OS |
+| One key's meaning, without touching the firmware | **keyd** | Everything on the deck, console included |
+| What a shortcut does | `~/.config/hypr/bindings.lua` | Hyprland |
+
+### Firmware (Vial)
+
+The keyboard is an RP2040 running Vial's QMK firmware, connected to the CM5 over USB. Changes are written to
+the keyboard itself: they survive reinstalls and follow it to any computer.
+
+- **From the deck:** the `deck` phase installs Vial's udev rule (`/etc/udev/rules.d/59-vial.rules`), so
+  Chrome can open the keyboard: go to <https://vial.rocks> and pick it. This follows from the hardware (the
+  keyboard is a USB device on the CM5) but has not been tried on a deck yet.
+- **From another computer** (ZitaoTech's documented way): cable the computer to the deck's lower USB-C port and
+  flip the left switch — the keyboard now talks to that computer. Open Vial there; flip back when done.
+- **Undo everything:** in Vial, *File → Load saved layout* with your keyboard's stock `.vil` from
+  [ZitaoTech/HackberryPiCM5/Keyboard](https://github.com/ZitaoTech/HackberryPiCM5/tree/main/Keyboard)
+  (Q10, Q20 or 9900).
+- **Careful:** one key on layer 2 enters the bootloader when double-tapped (tap dance 3 in the stock keymaps).
+  The keyboard stops and a USB drive appears; reboot and it comes back.
+- **Leave CapsLock as `KC_CAPS`:** the firmware switches the trackpad to scrolling from the CapsLock light.
+
+### Layout (XKB)
+
+In Hyprland, edit `~/.config/hypr/input.lua` (also *Setup → Input* in the Omarchy menu), then `hyprctl reload`;
+`hyprctl configerrors` shows mistakes.
+
+```lua
+hl.config({
+  input = {
+    kb_layout = "us,ca",
+    kb_variant = ",fr",
+    kb_options = "shift:both_capslock_cancel",   -- never add compose:caps here: CapsLock drives trackpad scrolling
+  },
+})
+```
+
+- **Switching between layouts:** Omarchy's usual `grp:alts_toggle` needs two Alt keys and the deck has one. Bind a
+  free combo in `~/.config/hypr/bindings.lua` instead:
+  `o.bind("SUPER + CTRL + J", "Next keyboard layout", "hyprctl switchxkblayout all next")`
+- **Only the built-in keyboard** (leave a USB keyboard alone): find its name with `hyprctl devices`, then
+  `hl.device({ name = "<that name>", kb_layout = "ca" })`. `hl.device` also takes `kb_options` and `kb_file`
+  (a complete custom XKB keymap).
+- **Console and the default:** `sudo dpkg-reconfigure keyboard-configuration` writes `/etc/default/keyboard`,
+  which the console uses and which the port's `input.lua` reads when you have not set `kb_layout` yourself.
+- If `compose:caps` comes back (an Omarchy menu change, a copied example), `./install-omarchy.sh check` flags it
+  and `./install-omarchy.sh deck` takes it out again, leaving your other options alone.
+
+### One key without reflashing (keyd)
+
+keyd remaps at the input-event level, under both the console and Hyprland. Ubuntu 26.04 packages it.
+
+```bash
+sudo apt install keyd
+sudo keyd monitor                      # press keys: prints the keyboard's id and each key's name
+sudo tee /etc/keyd/deck.conf >/dev/null <<'EOF'
+[ids]
+<the keyboard id keyd monitor printed>
+
+[main]
+leftcontrol = overload(control, esc)   # example: Ctrl when held, Escape when tapped
+EOF
+sudo systemctl enable --now keyd
+```
+
+Two things to check after enabling it: the trackpad's CapsLock scroll mode still works (if not, make the change in
+Vial instead), and `hyprctl devices` now shows a keyd virtual keyboard — any `hl.device` block has to use that
+name.
+
+### Shortcuts
+
+<kbd>Super</kbd>+<kbd>K</kbd> lists every binding. Change them in `~/.config/hypr/bindings.lua`: `hl.unbind("SUPER + X")`
+removes one, `o.bind("SUPER + X", "What it does", "command")` adds one.
 
 ## Why each gap exists
 

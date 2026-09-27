@@ -60,6 +60,7 @@ PERSIST_OVERLAYS=/etc/flash-kernel/dtbs/overlays
 NETPLAN_NM=/etc/netplan/90-omarchy-deck-nm.yaml
 AUTOLOGIN_DROPIN=/etc/systemd/system/getty@tty1.service.d/omarchy-deck-autologin.conf
 POWER_DROPIN=/etc/systemd/logind.conf.d/50-hackberrypi-power.conf
+VIAL_RULE=/etc/udev/rules.d/59-vial.rules
 HACKBERRY_OVERLAYS=(hackberrypicm5.dtbo hyperpixel4.dtbo vc4-kms-dpi-hyperpixel4sq.dtbo)
 
 # --- Output -------------------------------------------------------------------
@@ -180,6 +181,15 @@ kernel_overlay_dir() { echo "/usr/lib/firmware/$(uname -r)/device-tree/overlays"
 
 login_profile() { # the file a bash login shell actually reads: ~/.bash_profile shadows ~/.profile
   if [[ -f $HOME/.bash_profile ]]; then echo "$HOME/.bash_profile"; else echo "$HOME/.profile"; fi
+}
+
+compose_on_caps() { # would Hyprland make CapsLock the Compose key? (true when input.lua leaves it to Omarchy)
+  local input=$HOME/.config/hypr/input.lua
+  if grep -qsE '^[[:space:]]*kb_options[[:space:]]*=' "$input"; then
+    grep -qsE '^[[:space:]]*kb_options[[:space:]]*=.*compose:caps' "$input"
+  else
+    ! grep -qs '>>> omarchy-deck: CapsLock stays CapsLock' "$input"
+  fi
 }
 
 config_has() { grep -qxE "[[:space:]]*$1[[:space:]]*" "$BOOT/config.txt" 2>/dev/null; }
@@ -350,10 +360,16 @@ phase_check() {
 
   say "Deck session"
   if [[ -f $HOME/.config/hypr/deck.lua ]] && grep -q 'require("hypr.deck")' "$HOME/.config/hypr/hyprland.lua" 2>/dev/null; then
-    row ok hypr "deck.lua loaded (scale $(grep -oE 'scale = [0-9.]+' "$HOME/.config/hypr/deck.lua" | head -1 | cut -d' ' -f3), animations off, CapsLock kept)"
+    row ok hypr "deck.lua loaded (scale $(grep -oE 'scale = [0-9.]+' "$HOME/.config/hypr/deck.lua" | head -1 | cut -d' ' -f3), animations off)"
   else
-    row gap hypr "no deck overrides — panel at scale auto, CapsLock would stop the trackpad scroll mode" deck
+    row gap hypr "no deck overrides — panel at scale auto, full animations on a small GPU" deck
   fi
+  if [[ -f $HOME/.config/hypr/input.lua ]]; then
+    compose_on_caps && row gap capslock "CapsLock is the Compose key — the trackpad's scroll mode stops working" deck \
+                    || row ok capslock "CapsLock stays CapsLock (trackpad scroll mode)"
+  fi
+  [[ -f $VIAL_RULE ]] && row ok vial "keyboard remappable from the deck (Chrome → vial.rocks, or the Vial app)" \
+                      || row gap vial "no udev rule for Vial: remapping the keyboard needs another computer" deck
   grep -qs '>>> omarchy-deck: DRM device order' "$HOME/.config/uwsm/env-hyprland" \
     && row ok drm "AQ_DRM_DEVICES picks the DPI panel's card at login" \
     || row gap drm "Hyprland may open the HDMI card and leave the panel black" deck
@@ -684,7 +700,37 @@ phase_deck() {
       printf '\nrequire("hypr.deck") -- HackberryPi CM5 overrides (install-omarchy.sh)\n' >>"$HOME/.config/hypr/hyprland.lua"
     fi
   fi
-  ok "$HOME/.config/hypr/deck.lua: DPI-1 at scale $SCALE ($(awk -v s="$SCALE" 'BEGIN {printf "%d", 720/s}')px logical), animations/blur off, CapsLock kept"
+  ok "$HOME/.config/hypr/deck.lua: DPI-1 at scale $SCALE ($(awk -v s="$SCALE" 'BEGIN {printf "%d", 720/s}')px logical), animations/blur off"
+
+  # CapsLock stays CapsLock: the keyboard firmware reads its LED to put the trackpad in scroll mode.
+  # Only compose:caps is taken out of input.lua; layouts and every other option you set there stay.
+  local input=$HOME/.config/hypr/input.lua block
+  block=$(mktemp)
+  if grep -qsE '^[[:space:]]*kb_options[[:space:]]*=' "$input"; then
+    sed -i -E '/^[[:space:]]*kb_options[[:space:]]*=/ { s/compose:caps,//g; s/,compose:caps//g; s/"compose:caps"/""/g }' "$input"
+    replace_marked_block "$input" "omarchy-deck: CapsLock stays CapsLock" /dev/null   # yours wins; drop ours
+    ok "$input: compose:caps removed, your other kb_options kept"
+  else
+    # No kb_options of your own, so Omarchy's default (compose:caps,shift:both_capslock_cancel) would apply.
+    printf '%s\n' '-- >>> omarchy-deck: CapsLock stays CapsLock >>>' \
+      '-- Omarchy makes CapsLock the Compose key; the deck keyboard needs it as CapsLock (trackpad scroll mode).' \
+      '-- Set your own kb_options above and re-run the deck phase, and this block goes away.' \
+      'hl.config({ input = { kb_options = "shift:both_capslock_cancel" } })' \
+      '-- <<< omarchy-deck: CapsLock stays CapsLock <<<' >"$block"
+    replace_marked_block "$input" "omarchy-deck: CapsLock stays CapsLock" "$block"
+    ok "$input: kb_options without compose:caps"
+  fi
+  rm -f "$block"
+
+  # Vial: the keyboard's RP2040 talks to the CM5 over USB, so its remapping interface is reachable from
+  # the deck itself. This is Vial's own rule: the logged-in user may open Vial keyboards' raw HID node.
+  if [[ ! -f $VIAL_RULE ]]; then
+    sudo install -d /etc/udev/rules.d
+    echo 'KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{serial}=="*vial:f64c2b3c*", MODE="0660", GROUP="users", TAG+="uaccess", TAG+="udev-acl"' |
+      sudo tee "$VIAL_RULE" >/dev/null
+    { sudo udevadm control --reload-rules && sudo udevadm trigger --subsystem-match=hidraw; } 2>/dev/null || true
+    ok "Vial udev rule ($VIAL_RULE): remap the keyboard from the deck at https://vial.rocks in Chrome"
+  fi
 
   # 2. Which DRM card Hyprland opens (the DPI panel lives on its own RP1 device).
   replace_marked_block "$HOME/.config/uwsm/env-hyprland" "omarchy-deck: DRM device order" "$DECK_FILES/deck/env-hyprland"
@@ -748,9 +794,10 @@ PROFILE
   printf "${GREEN}Deck session ready.${NC}\n"
   info "1. sudo reboot"
   info "2. log in on the deck's own keyboard — Omarchy starts on tty1"
-  info "3. SUPER+SPACE launcher · SUPER+ALT+SPACE Omarchy menu · SUPER+K every binding"
+  info "3. SUPER+SPACE Omarchy menu · SUPER+ALT+SPACE apps · SUPER+RETURN terminal · SUPER+K every binding"
   info "   The stock keymap has a GUI (Super) key on its base layer. Digits live on layer 1 (hold the"
-  info "   key that turns W E R into 1 2 3), so workspace 1 is Super + that key + W. Remap in VIAL if needed."
+  info "   key that turns W E R into 1 2 3), so workspace 1 is Super + that key + W. Changing keys and"
+  info "   layouts: omarchy/README.md → \"Changing keys and layouts\"."
   info "If the panel stays black but HDMI works: echo 'DECK_DRM_ORDER=hdmi-first' > ~/.config/uwsm/env-hyprland.local"
 }
 

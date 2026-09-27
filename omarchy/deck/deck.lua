@@ -10,13 +10,11 @@ hl.monitor({ output = "DPI-1", mode = "preferred", position = "0x0", scale = @SC
 -- Anything plugged into the HDMI port sits to the right of the panel at its own preferred scale.
 hl.monitor({ output = "", mode = "preferred", position = "auto-right", scale = "auto" })
 
-hl.config({
-  input = {
-    -- Omarchy makes CapsLock the compose key. The deck's keyboard firmware reads the CapsLock LED to
-    -- switch the trackpad between pointer and scroll mode, so CapsLock has to stay a real CapsLock.
-    kb_options = "",
-  },
+-- Keyboard settings are deliberately not in here: layouts and kb_options belong in input.lua, where you
+-- change them. (The deck phase only removes compose:caps there — the keyboard firmware reads the CapsLock
+-- LED to switch the trackpad into scroll mode, so CapsLock has to stay CapsLock.)
 
+hl.config({
   -- The CM5's VideoCore VII shares memory bandwidth with the CPU; animations, blur and shadows are the
   -- per-frame passes that make it feel slow (same defaults the Omarchy ARM ports ship for the Pi 5).
   animations = {
