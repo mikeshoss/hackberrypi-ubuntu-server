@@ -1,0 +1,36 @@
+# >>> omarchy-deck: DRM device order >>>
+# Written by install-omarchy.sh (deck phase). uwsm sources this before it starts Hyprland.
+#
+# On the CM5 (like the Pi 5) the displays are split across DRM devices: HDMI on vc4, the DPI panel on its
+# own RP1 device, rendering on v3d. Card numbers follow probe order and are not stable across boots, so
+# the order is worked out at every login: the card that owns a DPI connector first (the internal panel),
+# then the one with HDMI connectors, so an external screen still works.
+#
+# To override, create ~/.config/uwsm/env-hyprland.local (read first) and either set
+#   DECK_DRM_ORDER=hdmi-first        if the panel stays black with the panel's card first, or
+#   export AQ_DRM_DEVICES=/dev/dri/cardN   to skip the detection entirely.
+[ -r "$HOME/.config/uwsm/env-hyprland.local" ] && . "$HOME/.config/uwsm/env-hyprland.local"
+if [ -z "${AQ_DRM_DEVICES:-}" ]; then
+  _deck_dpi=""
+  _deck_hdmi=""
+  for _deck_conn in /sys/class/drm/card*-*; do
+    [ -e "$_deck_conn" ] || continue
+    _deck_card=${_deck_conn##*/}
+    _deck_card=${_deck_card%%-*}
+    case "$_deck_conn" in
+      *-DPI-*) _deck_dpi=/dev/dri/$_deck_card ;;
+      *-HDMI-*) [ -n "$_deck_hdmi" ] || _deck_hdmi=/dev/dri/$_deck_card ;;
+    esac
+  done
+  if [ -n "$_deck_dpi" ]; then
+    if [ -z "$_deck_hdmi" ] || [ "$_deck_hdmi" = "$_deck_dpi" ]; then
+      export AQ_DRM_DEVICES="$_deck_dpi"
+    elif [ "${DECK_DRM_ORDER:-dpi-first}" = "hdmi-first" ]; then
+      export AQ_DRM_DEVICES="$_deck_hdmi:$_deck_dpi"
+    else
+      export AQ_DRM_DEVICES="$_deck_dpi:$_deck_hdmi"
+    fi
+  fi
+  unset _deck_dpi _deck_hdmi _deck_conn _deck_card
+fi
+# <<< omarchy-deck: DRM device order <<<

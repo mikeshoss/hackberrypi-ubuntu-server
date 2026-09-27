@@ -67,6 +67,19 @@ Power optimizations include:
 - Filesystem `noatime` to reduce NVMe writes
 - Reduced swappiness (10 instead of 60)
 
+## Omarchy (Hyprland desktop)
+
+To run [Omarchy](https://omarchy.org/) on the deck, see [omarchy/README.md](omarchy/README.md). In short,
+from a checkout of this repo, inside tmux:
+
+```bash
+./install-omarchy.sh           # gap report — changes nothing
+./install-omarchy.sh all       # hardware → Ubuntu 26.04 → Hyprland (arm64) → Omarchy → deck fixes
+```
+
+On Ubuntu 26.04 and later, use `./install-omarchy.sh hardware` instead of `install-post-boot.sh`: 26.04
+boots from `/boot/firmware/current/`, and the older script would rewrite `config.txt` without it.
+
 ## Manual Setup Guide
 
 If you prefer to do things step by step, here's the full process.

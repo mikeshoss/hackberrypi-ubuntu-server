@@ -48,6 +48,16 @@ if [ ! -f /boot/firmware/config.txt ]; then
     exit 1
 fi
 
+# --- Ubuntu 26.04+ boots from current/ (A/B "piboot" layout) ---
+# This script rewrites config.txt wholesale, which would drop the os_prefix=current/ lines
+# the firmware now needs to find the kernel: the deck would stop booting.
+if grep -q '^os_prefix=' /boot/firmware/config.txt; then
+    echo -e "${RED}Error: this boot partition uses Ubuntu's A/B boot layout (os_prefix=current/).${NC}"
+    echo "Rewriting config.txt here would leave the deck unbootable. On Ubuntu 26.04 and later run,"
+    echo "from a checkout of this repo:  ./install-omarchy.sh hardware"
+    exit 1
+fi
+
 # --- Check overlays directory exists ---
 if [ ! -d /boot/firmware/overlays ]; then
     echo -e "${RED}Error: /boot/firmware/overlays directory not found.${NC}"
