@@ -199,7 +199,12 @@ add_kali_repo() {
   APT_DIRTY=1
 }
 
-apt_update_once() { [[ ${APT_DIRTY:-0} == 1 ]] && { say "apt-get update"; $SUDO apt-get update -qq; APT_DIRTY=0; } || true; }
+apt_update_once() {
+  [[ ${APT_DIRTY:-0} == 1 ]] || return 0
+  say "apt-get update"
+  $SUDO apt-get update -qq || die "apt-get update failed — a repo was not added cleanly (check the messages above)"
+  APT_DIRTY=0
+}
 apt_install() { $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; }
 
 # =============================================================================
@@ -218,17 +223,17 @@ phase_install() {
   if (( ${#NEED_KISMET[@]} )); then
     say "Kismet"
     # kismet + the linux wifi datasource; the wardrive user must be in the kismet group
-    apt_install "${NEED_KISMET[@]}" kismet-capture-linux-wifi 2>/dev/null || apt_install "${NEED_KISMET[@]}"
+    apt_install "${NEED_KISMET[@]}" kismet-capture-linux-wifi 2>/dev/null || apt_install "${NEED_KISMET[@]}" || die "Kismet failed to install"
     getent group kismet >/dev/null && $SUDO usermod -aG kismet "$(id -un)" && ok "added $(id -un) to the kismet group (re-login to take effect)"
   fi
-  (( ${#NEED_TS[@]} )) && { say "Tailscale"; apt_install tailscale; $SUDO systemctl enable --now tailscaled 2>/dev/null || true; info "connect with: sudo tailscale up"; }
+  (( ${#NEED_TS[@]} )) && { say "Tailscale"; apt_install tailscale || die "Tailscale failed to install"; $SUDO systemctl enable --now tailscaled 2>/dev/null || true; info "connect with: sudo tailscale up"; }
   if (( ${#NEED_DOCKER[@]} )); then
     say "Docker"
-    if (( DOCKER_CE )); then setup_docker_ce; else apt_install docker.io docker-compose-v2; fi
+    { (( DOCKER_CE )) && setup_docker_ce || apt_install docker.io docker-compose-v2; } || die "Docker failed to install"
     $SUDO systemctl enable --now docker 2>/dev/null || true
     getent group docker >/dev/null && $SUDO usermod -aG docker "$(id -un)" && ok "added $(id -un) to the docker group (re-login to take effect)"
   fi
-  (( ${#NEED_APT[@]} ))  && { say "Ubuntu archive tools"; apt_install "${NEED_APT[@]}"; }
+  (( ${#NEED_APT[@]} ))  && { say "Ubuntu archive tools"; apt_install "${NEED_APT[@]}" || die "some Ubuntu-archive tools failed to install (see apt's message above)"; }
   if (( ${#NEED_KALI[@]} && WITH_KALI )); then
     say "Kali-only tools (pinned repo)"
     local p
