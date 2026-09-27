@@ -42,10 +42,18 @@ fi
 if [[ $DEB_ARCH == arm64 ]]; then
   say "Obsidian (arm64 AppImage → /opt/Obsidian)"
   fetch "https://github.com/obsidianmd/obsidian-releases/releases/download/v$OBSIDIAN_VER/Obsidian-$OBSIDIAN_VER-arm64.AppImage" "$DL/Obsidian-arm64.AppImage"
-  chmod +x "$DL/Obsidian-arm64.AppImage"
-  # --appimage-extract needs no FUSE: it unpacks the embedded squashfs into ./squashfs-root.
+  # An AppImage is an ELF runtime with a squashfs appended where the ELF's section headers end. Unpack
+  # that squashfs directly: no FUSE, and nothing downloaded gets executed.
+  command -v unsquashfs >/dev/null || apt_install squashfs-tools
+  img=$DL/Obsidian-arm64.AppImage
+  shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' ')
+  shentsize=$(od -An -t u2 -j 58 -N 2 "$img" | tr -d ' ')
+  shnum=$(od -An -t u2 -j 60 -N 2 "$img" | tr -d ' ')
+  offset=$(( shoff + shentsize * shnum ))
+  [[ $(dd if="$img" bs=1 skip="$offset" count=4 2>/dev/null) == hsqs ]] ||
+    die "Obsidian AppImage: no squashfs at offset $offset — the AppImage format changed"
   rm -rf "$BUILD/obsidian"; mkdir -p "$BUILD/obsidian"
-  ( cd "$BUILD/obsidian" && "$DL/Obsidian-arm64.AppImage" --appimage-extract >/dev/null )
+  unsquashfs -q -no-progress -o "$offset" -d "$BUILD/obsidian/squashfs-root" "$img" >/dev/null
   sudo rm -rf /opt/Obsidian
   sudo cp -a "$BUILD/obsidian/squashfs-root" /opt/Obsidian
   sudo chmod -R a+rX /opt/Obsidian
