@@ -67,10 +67,13 @@ Omarchy menu, <kbd>Super</kbd>+<kbd>K</kbd> lists every binding.
 
 - **Panel black under Hyprland, HDMI fine:** swap the DRM card order:
   `echo DECK_DRM_ORDER=hdmi-first > ~/.config/uwsm/env-hyprland.local`, log out, log back in.
-- **Digits are on the Sym layer** of the stock VIAL keymap, so workspace 1 is <kbd>Super</kbd>+<kbd>Sym</kbd>+<kbd>W</kbd>.
-  Remap in VIAL if that is one finger too many.
+- **Digits live on layer 1** of the stock VIAL keymap (the layer key that turns W E R into 1 2 3), so
+  workspace 1 is <kbd>Super</kbd> + that layer key + <kbd>W</kbd>. Remap in VIAL if that is one finger too many.
 - **The NetworkManager switch happens at reboot**, on purpose. Applying it live over SSH-on-Wi-Fi drops the
   session you are applying it from. To go back: delete `/etc/netplan/90-omarchy-deck-nm.yaml` and reboot.
+- **Re-running the port's user-config step** (`--only=40` in its checkout) moves `~/.config/hypr` aside and
+  copies Omarchy's fresh, which drops `deck.lua`. Run `./install-omarchy.sh deck` again afterwards;
+  `./install-omarchy.sh check` shows when it is missing.
 - **Updating Hyprland** means re-running `./install-omarchy.sh hyprland` after the PPA moves on; apt alone
   will not see new arm64 builds.
 - **Build trees** in `~/.cache/omarchy-deck/hypr-build/` can be deleted once installed; the `.deb`s stay in

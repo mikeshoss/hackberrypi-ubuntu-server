@@ -542,8 +542,12 @@ phase_os() {
 # cppiber/hyprland publishes Hyprland 0.56 for 26.04 but builds amd64 only (Launchpad PPAs do not build
 # arm64 unless the owner enables it). Its source packages build fine on arm64, so they are rebuilt here
 # in dependency order into a local apt repository. apt then installs and upgrades them like any package.
+index_local_repo() { # a bare Packages file works, but apt 3 then warns about every compressed variant it tried
+  (cd "$LOCAL_REPO" && sudo sh -c 'dpkg-scanpackages --multiversion . /dev/null 2>/dev/null > Packages &&
+    gzip -9nc Packages > Packages.gz && apt-ftparchive release . > Release')
+}
 refresh_local_repo() {
-  (cd "$LOCAL_REPO" && sudo sh -c 'dpkg-scanpackages --multiversion . /dev/null > Packages 2>/dev/null')
+  index_local_repo
   sudo apt-get update -qq -o Dir::Etc::sourcelist="$LOCAL_LIST" -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0
 }
 
@@ -562,7 +566,7 @@ phase_hyprland() {
     fi
   done
 
-  apt_install software-properties-common dpkg-dev devscripts equivs fakeroot build-essential
+  apt_install software-properties-common dpkg-dev apt-utils devscripts equivs fakeroot build-essential
   # -s: the sources are what gets built. Re-run when the PPA was added earlier without deb-src.
   if ! { apt-cache showsrc hyprland 2>/dev/null || true; } | grep -E '^Version: .*ppa' >/dev/null; then
     sudo add-apt-repository -y -s "ppa:$HYPR_PPA"
@@ -570,7 +574,7 @@ phase_hyprland() {
   grep -rqs "$QS_PPA" /etc/apt/sources.list.d/ || sudo add-apt-repository -y "ppa:$QS_PPA"
   sudo install -d "$LOCAL_REPO"
   echo "deb [trusted=yes] file:$LOCAL_REPO ./" | sudo tee "$LOCAL_LIST" >/dev/null
-  [[ -f $LOCAL_REPO/Packages ]] || sudo touch "$LOCAL_REPO/Packages"
+  index_local_repo
   sudo apt-get update -qq
 
   jobs=${JOBS:-$(default_jobs)}
@@ -745,8 +749,8 @@ PROFILE
   info "1. sudo reboot"
   info "2. log in on the deck's own keyboard — Omarchy starts on tty1"
   info "3. SUPER+SPACE launcher · SUPER+ALT+SPACE Omarchy menu · SUPER+K every binding"
-  info "   The default keymap has a GUI (Super) key on the base layer; digits need the Sym layer,"
-  info "   so workspace 1 is Super + Sym + W. Remap in VIAL if that is too many fingers."
+  info "   The stock keymap has a GUI (Super) key on its base layer. Digits live on layer 1 (hold the"
+  info "   key that turns W E R into 1 2 3), so workspace 1 is Super + that key + W. Remap in VIAL if needed."
   info "If the panel stays black but HDMI works: echo 'DECK_DRM_ORDER=hdmi-first' > ~/.config/uwsm/env-hyprland.local"
 }
 
