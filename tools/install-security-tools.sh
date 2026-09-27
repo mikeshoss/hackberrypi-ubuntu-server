@@ -205,7 +205,7 @@ apt_update_once() {
   $SUDO apt-get update -qq || die "apt-get update failed — a repo was not added cleanly (check the messages above)"
   APT_DIRTY=0
 }
-apt_install() { $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; }
+apt_install() { $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; }
 
 # =============================================================================
 # install
