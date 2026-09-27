@@ -67,6 +67,21 @@ Power optimizations include:
 - Filesystem `noatime` to reduce NVMe writes
 - Reduced swappiness (10 instead of 60)
 
+## Security / wifi tooling
+
+The deck's Kali-style wifi-audit stack (Kismet, aircrack-ng, hashcat, the
+[wardrive-ui](https://github.com/mikeshoss/wardrive) capture service) moves to Ubuntu with the two
+scripts in [`tools/`](tools/):
+
+```bash
+tools/deck-scan.sh                                   # on the deck: inventory what's installed → JSON
+tools/install-security-tools.sh plan --from-inventory deck-inventory-*.json   # on Ubuntu: show the plan
+tools/install-security-tools.sh install --from-inventory deck-inventory-*.json
+```
+
+Most of the stack is in Ubuntu's own arm64 archive; Kismet and Tailscale come from their own repos, and
+a few Kali-only tools from a pinned, opt-in Kali repo. See [`tools/README.md`](tools/README.md).
+
 ## Omarchy (Hyprland desktop)
 
 To run [Omarchy](https://omarchy.org/) on the deck, see [omarchy/README.md](omarchy/README.md). In short,
