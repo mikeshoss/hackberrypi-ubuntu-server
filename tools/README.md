@@ -102,10 +102,18 @@ arm64.
 
 ## Tested
 
-`deck-scan.sh` was run in a container and produces valid JSON that the installer
-reads back. `install-security-tools.sh plan` and `--from-inventory` resolution
-are checked against the real Ubuntu 26.04 arm64 archive and the live
-Kismet/Tailscale repos — every tool routes to a real source. A representative
-`install` + `verify` (Kismet + Tailscale repos, the wifi group, monitor-mode
-check) is being validated in an arm64 Ubuntu 26.04 container. Nothing has run on
-the deck itself yet — `plan` and `deck-scan.sh` change nothing, so start there.
+In arm64 Ubuntu 26.04 containers:
+
+- `deck-scan.sh` produces valid JSON that the installer reads back (it detected
+  aircrack-ng, hcxtools, iw and a wardrive checkout in a fixture).
+- `plan` and `--from-inventory` route every tool to a real source, checked
+  against the live Ubuntu 26.04 arm64 archive and the Kismet/Tailscale repos.
+- A real `install` added both vendor repos — Kismet fell back to `plucky`,
+  Tailscale took `resolute` (26.04) — and installed **Kismet 2025.09** (with the
+  linux-wifi datasource) and **Tailscale 1.102** as arm64 from them.
+- The installer fails loudly (no false "install done") when a package or repo
+  can't be installed.
+
+Nothing has run on the deck itself yet — `plan` and `deck-scan.sh` change
+nothing, so start there. The one thing no container can prove is a monitor-mode
+radio; `verify` checks for one on the real deck.
