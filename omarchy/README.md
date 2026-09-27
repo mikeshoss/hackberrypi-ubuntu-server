@@ -81,6 +81,12 @@ Omarchy menu, <kbd>Super</kbd>+<kbd>K</kbd> lists every binding.
 
 ## Tests
 
+Both need Docker and change nothing on the host.
+
+`omarchy/test/test-deck.sh` runs the `deck` phase twice with different options and checks the Lua parses,
+nothing is added twice, the login hook goes where bash reads it, netplan takes the NetworkManager
+renderer, and the DRM picker orders the cards correctly against a fake sysfs.
+
 `omarchy/test/test-hardware.sh` runs the `hardware` phase in a throwaway Ubuntu 26.04 container (needs
 Docker) against the deck's current 24.04 layout and a fresh 26.04 A/B layout produced by Ubuntu's own
 `piboot-try` migration, then uses flash-kernel's own overlay search to prove the pinned overlays reach the
